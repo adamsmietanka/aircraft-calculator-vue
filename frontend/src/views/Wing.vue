@@ -1,0 +1,273 @@
+<template>
+  <section class="transition-all duration-500">
+    <div
+      class="relative transition-all transform duration-500"
+      :class="{ '-translate-x-72': route.params.step > 1 }"
+    >
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Fuselage chord</span>
+        </label>
+        <input
+          type="number"
+          step="0.1"
+          class="input input-bordered"
+          v-model="wing.chord_fuse"
+          @change="Plotly.react('wing-plot', traces, layout, options)"
+        />
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Tip chord</span>
+        </label>
+        <input
+          type="number"
+          step="0.1"
+          min="0"
+          class="input input-bordered"
+          v-model="wing.chord_tip"
+          @change="Plotly.react('wing-plot', traces, layout, options)"
+        />
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Wingspan</span>
+        </label>
+        <input
+          type="number"
+          step="0.2"
+          class="input input-bordered"
+          v-model="wing.span"
+          @change="Plotly.react('wing-plot', traces, layout, options)"
+        />
+      </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Angle</span>
+        </label>
+        <input
+          type="number"
+          class="input input-bordered"
+          v-model="wing.angle"
+          @change="Plotly.react('wing-plot', traces, layout, options)"
+        />
+      </div>
+    </div>
+    <div id="wing-plot"></div>
+  </section>
+</template>
+
+<script setup>
+import { onMounted, reactive, computed, watch } from "vue";
+import { useRoute } from "vue-router";
+import Plotly from "plotly.js-gl3d-dist-min";
+import { profile } from "../components/stub/0009";
+import { Camera } from "../components/services/camera";
+
+const route = useRoute();
+
+const wing = reactive({
+  chord_fuse: 2,
+  chord_tip: 1,
+  span: 10,
+  angle: 10,
+});
+
+const tip_leading = computed(
+  () => -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2
+);
+
+const tip_trailing = computed(
+  () =>
+    -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2 - wing.chord_tip
+);
+
+const section_fuse = computed(() => ({
+  x: profile[0].map((x) => x * -wing.chord_fuse),
+  y: Array(profile[0].length).fill(0),
+  z: profile[1].map((z) => z * wing.chord_fuse),
+  type: "scatter3d",
+  mode: "lines",
+}));
+
+const section_tip = computed(() => ({
+  x: profile[0].map((x) => x * -wing.chord_tip + tip_leading.value),
+  y: Array(profile[0].length).fill(wing.span / 2),
+  z: profile[1].map((z) => z * wing.chord_tip),
+  type: "scatter3d",
+  mode: "lines",
+}));
+
+const leading = computed(() => ({
+  x: [...Array(11).keys()].map((x) => (x * tip_leading.value) / 10),
+  y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
+  z: Array(11).fill(0),
+  type: "scatter3d",
+  mode: "lines",
+}));
+
+const trailing = computed(() => ({
+  x: [...Array(11).keys()].map(
+    (x) => (x * (wing.chord_fuse + tip_trailing.value)) / 10 - wing.chord_fuse
+  ),
+  y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
+  z: Array(11).fill(0),
+  type: "scatter3d",
+  mode: "lines",
+}));
+
+const traces = computed(() => [
+  section_fuse.value,
+  section_tip.value,
+  leading.value,
+  trailing.value,
+]);
+
+// const aspectratio = computed(() => ({
+//   x: 1,
+//   y: wing.span / 2 / Math.max(wing.chord_fuse, -tip_trailing.value),
+//   z:
+//     (wing.chord_fuse * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
+//     Math.max(wing.chord_fuse, -tip_trailing.value),
+// }));
+
+const aspectratio = computed(() => ({
+  x: (2 * Math.max(wing.chord_fuse, -tip_trailing.value)) / (wing.span / 2),
+  y: 2,
+  z:
+    (2 *
+      (wing.chord_fuse * (Math.max(...profile[1]) - Math.min(...profile[1])))) /
+    (wing.span / 2),
+}));
+
+const layout = reactive({
+  title: "Wing contour",
+  showlegend: false,
+  font: { size: 12 },
+  height: 500,
+  width: 800,
+  margin: {
+    l: 0,
+    r: 0,
+    b: 0,
+    t: 50,
+    pad: 4,
+  },
+  scene: {
+    aspectmode: "manual",
+    aspectratio: aspectratio.value,
+    camera: {
+      eye:
+        route.params.step === "1"
+          ? { x: 0.01, y: 0, z: 0.5 }
+          : { x: 1.5, y: 1.5, z: 0.75 },
+      projection: { type: "orthographic" },
+    },
+    zaxis: {
+      autorange: true,
+      showgrid: false,
+      zeroline: false,
+      showline: false,
+      autotick: true,
+      ticks: "",
+      showticklabels: false,
+    },
+  },
+});
+
+const options = {
+  scrollZoom: true,
+  responsive: true,
+  modeBarButtons: [["toImage"]],
+  toImageButtonOptions: {
+    format: "png",
+    filename: "engine_power",
+  },
+};
+
+onMounted(() => {
+  Plotly.newPlot("wing-plot", traces.value, layout, options);
+});
+
+watch(aspectratio, (newValue) => {
+  layout.scene.aspectratio = newValue;
+  console.log(newValue, layout.scene.aspectratio);
+});
+
+watch(
+  () => layout.scene.camera.eye,
+  (newValue) => {
+    console.log(newValue);
+  }
+);
+
+const camera = new Camera("wing-plot", layout);
+
+watch(
+  () => route.params.step,
+  (newValue) => {
+    let target =
+      newValue === "1"
+        ? { x: 0.01, y: 0, z: 1.5 }
+        : { x: 1.5, y: 1.5, z: 0.75 };
+    camera.animate(target);
+  }
+);
+</script>
+
+<!-- <script>
+import axios from "axios";
+import Plotly from "plotly.js-gl3d-dist-min";
+import NumberField from "@/components/NumberField";
+import { mapMutations, mapState } from "vuex";
+
+export default {
+  computed: {
+    selected_airfoil: {
+      get() {
+        return this.$store.state.wing.selected_airfoil;
+      },
+      set(value) {
+        return this.$store.commit("SET_AIRFOIL", value);
+      },
+    },
+  mounted() {
+    Plotly.newPlot("wing-plot", this.traces, this.layout, this.options);
+  },
+  async created() {
+    const choices = await axios.get("http://localhost:5000/airfoils");
+    const airfoil = await axios.get("http://localhost:5000/airfoil", {
+      params: { airfoil: this.selected_airfoil },
+    });
+    this.airfoils = choices.data;
+    this.profile = airfoil.data;
+  },
+  watch: {
+    traces() {
+      Plotly.react("wing-plot", this.traces, this.layout, this.options);
+    },
+    async selected_airfoil() {
+      const airfoil = await axios.get("http://localhost:5000/airfoil", {
+        params: { airfoil: this.selected_airfoil },
+      });
+      this.profile = airfoil.data;
+    },
+    profile() {
+      Plotly.react("wing-plot", this.traces, this.layout, this.options);
+    },
+  },
+};
+</script> -->
+
+<style scoped>
+section {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  width: 250px;
+}
+</style>
