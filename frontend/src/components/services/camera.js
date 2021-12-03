@@ -58,22 +58,20 @@ export class Camera {
 
   cameraOrbital(startPos, targetPos, mu) {
     let { x, y, z } = startPos;
+    let firstHalf = Math.min(2 * mu, 1);
+    let secondHalf = Math.min(2 * mu - 1, 1);
 
     if (this.isFacingDown(startPos)) {
-      x = this.bezier(startPos.x, targetPos.x, Math.min(2 * mu, 1));
-      z = this.bezier(startPos.z, targetPos.z, Math.min(2 * mu, 1));
+      x = this.bezier(startPos.x, targetPos.x, firstHalf);
+      z = this.bezier(startPos.z, targetPos.z, firstHalf);
       if (0.5 < mu) {
-        y = this.bezierOvershoot(
-          startPos.y,
-          targetPos.y,
-          Math.min(2 * mu - 1, 1)
-        );
+        y = this.bezierOvershoot(startPos.y, targetPos.y, secondHalf);
       }
     } else {
-      y = this.bezier(startPos.y, targetPos.y, Math.min(2 * mu, 1));
+      y = this.bezier(startPos.y, targetPos.y, firstHalf);
       if (0.5 < mu) {
-        x = this.bezier(startPos.x, targetPos.x, Math.min(2 * mu - 1, 1));
-        z = this.bezier(startPos.z, targetPos.z, Math.min(2 * mu - 1, 1));
+        x = this.bezier(startPos.x, targetPos.x, secondHalf);
+        z = this.bezier(startPos.z, targetPos.z, secondHalf);
       }
     }
     return { x, y, z };
