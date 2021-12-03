@@ -52,13 +52,34 @@
           @change="Plotly.react('wing-plot', traces, layout, options)"
         />
       </div>
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text">Segments</span>
+        </label>
+        <div class="btn-group">
+          <button
+            class="btn btn-sm btn-success"
+            v-if="wing.segments.length < 5"
+            @click="addSegment"
+          >
+            Add
+          </button>
+          <button
+            class="btn btn-sm btn-error"
+            v-if="wing.segments.length"
+            @click="wing.segments.pop()"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
     </div>
     <div id="wing-plot"></div>
   </section>
 </template>
 
 <script setup>
-import { onMounted, reactive, computed, watch } from "vue";
+import { onMounted, reactive, computed, watch, ref } from "vue";
 import { useRoute } from "vue-router";
 import Plotly from "plotly.js-gl3d-dist-min";
 import { profile } from "../components/stub/0009";
@@ -69,6 +90,7 @@ const route = useRoute();
 const wing = reactive({
   chord_fuse: 2,
   chord_tip: 1,
+  segments: [],
   span: 10,
   angle: 10,
 });
@@ -81,6 +103,14 @@ const tip_trailing = computed(
   () =>
     -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2 - wing.chord_tip
 );
+
+const calculateSection = () => ({
+  x: profile[0].map((x) => x * -wing.chord_fuse),
+  y: Array(profile[0].length).fill(0),
+  z: profile[1].map((z) => z * wing.chord_fuse),
+  type: "scatter3d",
+  mode: "lines",
+});
 
 const section_fuse = computed(() => ({
   x: profile[0].map((x) => x * -wing.chord_fuse),
@@ -115,6 +145,23 @@ const trailing = computed(() => ({
   type: "scatter3d",
   mode: "lines",
 }));
+
+const addSegment = () => {
+  let prevSegment = wing.segments.length
+    ? wing.segments[wing.segments.length - 1]
+    : { start: 0, startX: 0, startChord: wing.chord_fuse, angle: wing.angle };
+  prevSegment = {
+    ...prevSegment,
+    end: wing.span / 2,
+    endChord: wing.chord_tip,
+  };
+  wing.segments.push({
+    start: (prevSegment.start + prevSegment.end) / 2,
+    startX: -(Math.tan((prevSegment.angle * Math.PI) / 180) * prevSegment.span) / 2,
+    startChord: (prevSegment.startChord + prevSegment.endChord) / 2,
+    angle: prevSegment.angle * 1.1,
+  });
+};
 
 const traces = computed(() => [
   section_fuse.value,
