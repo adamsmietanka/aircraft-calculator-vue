@@ -104,14 +104,6 @@ const tip_trailing = computed(
     -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2 - wing.chord_tip
 );
 
-const calculateSection = () => ({
-  x: profile[0].map((x) => x * -wing.chord_fuse),
-  y: Array(profile[0].length).fill(0),
-  z: profile[1].map((z) => z * wing.chord_fuse),
-  type: "scatter3d",
-  mode: "lines",
-});
-
 const section_fuse = computed(() => ({
   x: profile[0].map((x) => x * -wing.chord_fuse),
   y: Array(profile[0].length).fill(0),
@@ -159,39 +151,45 @@ const addSegment = () => {
     angle: prevSegment.angle * 1,
   };
   wing.segments.push(segment);
-  x.value.push(segment.startX, segment.startX - segment.startChord);
-  y.value.push(startY, startY);
-  z.value.push(0, 0);
+
   Plotly.react("wing-plot", traces.value, layout, options);
 };
+
+const calculateSection = (seg) => ({
+  x: profile[0].map((x) => x * -seg.startChord + seg.startX),
+  y: Array(profile[0].length).fill(seg.startY),
+  z: profile[1].map((z) => z * -seg.startChord),
+  type: "scatter3d",
+  mode: "lines",
+  marker: { color: "black" },
+});
+
+const calculateLeading = (seg) => ({
+  x: profile[0].map((x) => x * -seg.startChord + seg.startX),
+  y: Array(profile[0].length).fill(seg.startY),
+  z: profile[1].map((z) => z * -seg.startChord),
+  type: "scatter3d",
+  mode: "lines",
+  marker: { color: "black" },
+});
+
+const segmentSections = computed(() => {
+  let sections = [];
+  wing.segments.forEach((seg) => {
+    sections.push(calculateSection(seg));
+  });
+  return sections;
+});
 
 const removeSegment = () => {
   wing.segments.pop();
-  x.value.pop();
-  x.value.pop();
-  y.value.pop();
-  y.value.pop();
-  z.value.pop();
-  z.value.pop();
   Plotly.react("wing-plot", traces.value, layout, options);
 };
-
-const x = ref([]);
-const y = ref([]);
-const z = ref([]);
-
-const segments = computed(() => ({
-  x: [0, -wing.chord_fuse, ...x.value],
-  y: [0, 0, ...y.value],
-  z: [0, 0, ...z.value],
-  mode: "markers",
-  type: "scatter3d",
-}));
 
 const traces = computed(() => {
   let basic = [section_fuse.value, section_tip.value];
   wing.segments.length
-    ? basic.push(segments.value)
+    ? basic.push(...segmentSections.value)
     : basic.push(leading.value, trailing.value);
   return basic;
 });
