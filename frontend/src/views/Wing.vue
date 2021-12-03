@@ -67,7 +67,7 @@
           <button
             class="btn btn-sm btn-error"
             v-if="wing.segments.length"
-            @click="wing.segments.pop()"
+            @click="removeSegment"
           >
             Remove
           </button>
@@ -149,26 +149,52 @@ const trailing = computed(() => ({
 const addSegment = () => {
   let prevSegment = wing.segments.length
     ? wing.segments[wing.segments.length - 1]
-    : { start: 0, startX: 0, startChord: wing.chord_fuse, angle: wing.angle };
-  prevSegment = {
-    ...prevSegment,
-    end: wing.span / 2,
-    endChord: wing.chord_tip,
+    : { startY: 0, startX: 0, startChord: wing.chord_fuse, angle: wing.angle };
+  console.log(prevSegment);
+  let startY = (prevSegment.startY + wing.span / 2) / 2;
+  let segment = {
+    startY,
+    startX: -(Math.tan((prevSegment.angle * Math.PI) / 180) * startY),
+    startChord: (prevSegment.startChord + wing.chord_tip) / 2,
+    angle: prevSegment.angle * 1,
   };
-  wing.segments.push({
-    start: (prevSegment.start + prevSegment.end) / 2,
-    startX: -(Math.tan((prevSegment.angle * Math.PI) / 180) * prevSegment.span) / 2,
-    startChord: (prevSegment.startChord + prevSegment.endChord) / 2,
-    angle: prevSegment.angle * 1.1,
-  });
+  wing.segments.push(segment);
+  x.value.push(segment.startX, segment.startX - segment.startChord);
+  y.value.push(startY, startY);
+  z.value.push(0, 0);
+  Plotly.react("wing-plot", traces.value, layout, options);
 };
 
-const traces = computed(() => [
-  section_fuse.value,
-  section_tip.value,
-  leading.value,
-  trailing.value,
-]);
+const removeSegment = () => {
+  wing.segments.pop();
+  x.value.pop();
+  x.value.pop();
+  y.value.pop();
+  y.value.pop();
+  z.value.pop();
+  z.value.pop();
+  Plotly.react("wing-plot", traces.value, layout, options);
+};
+
+const x = ref([]);
+const y = ref([]);
+const z = ref([]);
+
+const segments = computed(() => ({
+  x: [0, -wing.chord_fuse, ...x.value],
+  y: [0, 0, ...y.value],
+  z: [0, 0, ...z.value],
+  mode: "markers",
+  type: "scatter3d",
+}));
+
+const traces = computed(() => {
+  let basic = [section_fuse.value, section_tip.value];
+  wing.segments.length
+    ? basic.push(segments.value)
+    : basic.push(leading.value, trailing.value);
+  return basic;
+});
 
 // const aspectratio = computed(() => ({
 //   x: 1,
