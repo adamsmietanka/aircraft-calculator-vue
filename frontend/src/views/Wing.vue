@@ -12,7 +12,7 @@
           type="number"
           step="0.1"
           class="input input-bordered"
-          v-model="wing.chordStart"
+          v-model="wing.startChord"
           @change="Plotly.react('wing-plot', traces, layout, options)"
         />
       </div>
@@ -66,7 +66,7 @@
           </button>
           <button
             class="btn btn-sm btn-error"
-            v-if="wing.segments.length"
+            v-if="wing.segments.length > 1"
             @click="removeSegment"
           >
             Remove
@@ -88,93 +88,111 @@ import { Camera } from "../components/services/camera";
 const route = useRoute();
 
 const wing = reactive({
-  chordStart: 2,
   chordEnd: 1,
-  segments: [],
+  segments: [
+    {
+      startChord: 2,
+      angle: 10,
+      startX: 0,
+      startY: 0,
+    },
+  ],
   span: 10,
-  angle: 10,
 });
 
-const tipLeading = computed(
-  () => -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2
-);
-
-const tipTrailing = computed(() => tipLeading.value - wing.chordEnd);
-
-const sectionFuse = computed(() => ({
-  x: profile[0].map((x) => x * -wing.chordStart),
-  y: Array(profile[0].length).fill(0),
-  z: profile[1].map((z) => z * wing.chordStart),
-  type: "scatter3d",
-  mode: "lines",
-}));
-
-const sectionTip = computed(() => ({
-  x: profile[0].map((x) => x * -wing.chordEnd + tipLeading.value),
-  y: Array(profile[0].length).fill(wing.span / 2),
-  z: profile[1].map((z) => z * wing.chordEnd),
-  type: "scatter3d",
-  mode: "lines",
-}));
-
-const leading = computed(() => ({
-  x: [...Array(11).keys()].map((x) => (x * tipLeading.value) / 10),
-  y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
-  z: Array(11).fill(0),
-  type: "scatter3d",
-  mode: "lines",
-}));
-
-const trailing = computed(() => ({
-  x: [...Array(11).keys()].map(
-    (x) => (x * (wing.chordStart + tipTrailing.value)) / 10 - wing.chordStart
-  ),
-  y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
-  z: Array(11).fill(0),
-  type: "scatter3d",
-  mode: "lines",
-}));
-
 const addSegment = () => {
-  let prevSegment = wing.segments.length
-    ? wing.segments[wing.segments.length - 1]
-    : { startY: 0, startX: 0, startChord: wing.chordStart, angle: wing.angle };
+  let prevSegment = wing.segments[wing.segments.length - 1];
   let startY = (prevSegment.startY + wing.span / 2) / 2;
   let segment = {
     startY,
-    startX: -(Math.tan((prevSegment.angle * Math.PI) / 180) * startY),
+    startX: -(
+      Math.tan((prevSegment.angle * Math.PI) / 180) *
+        (startY - prevSegment.startY) -
+      prevSegment.startX
+    ),
     startChord: (prevSegment.startChord + wing.chordEnd) / 2,
-    angle: prevSegment.angle * 1,
+    angle: prevSegment.angle * 1.25,
   };
   wing.segments.push(segment);
 
   Plotly.react("wing-plot", traces.value, layout, options);
 };
 
-const calculateSection = (seg) => ({
-  x: profile[0].map((x) => x * -seg.startChord + seg.startX),
-  y: Array(profile[0].length).fill(seg.startY),
-  z: profile[1].map((z) => z * -seg.startChord),
+const calculateSection = (x, y, chord) => ({
+  x: profile[0].map((i) => i * -chord + x),
+  y: Array(profile[0].length).fill(y),
+  z: profile[1].map((i) => i * -chord),
   type: "scatter3d",
   mode: "lines",
   marker: { color: "black" },
 });
 
 const calculateLeading = (seg) => ({
-  x: profile[0].map((x) => x * -seg.startChord + seg.startX),
-  y: Array(profile[0].length).fill(seg.startY),
-  z: profile[1].map((z) => z * -seg.startChord),
+  x: [...Array(11).keys()].map(
+    (x) => (x * (seg.endX - seg.startX)) / 10 + seg.startX
+  ),
+  y: [...Array(11).keys()].map(
+    (y) => (y * (seg.endY - seg.startY)) / 10 + seg.startY
+  ),
+  z: Array(11).fill(0),
   type: "scatter3d",
   mode: "lines",
   marker: { color: "black" },
 });
 
-const segmentSections = computed(() => {
-  let sections = [];
-  wing.segments.forEach((seg) => {
-    sections.push(calculateSection(seg));
-  });
-  return sections;
+const calculateTrailing = (seg) => ({
+  x: [...Array(11).keys()].map(
+    (x) =>
+      (x * (seg.endX - seg.endChord - (seg.startX - seg.startChord))) / 10 +
+      seg.startX -
+      seg.startChord
+  ),
+  y: [...Array(11).keys()].map(
+    (y) => (y * (seg.endY - seg.startY)) / 10 + seg.startY
+  ),
+  z: Array(11).fill(0),
+  type: "scatter3d",
+  mode: "lines",
+  marker: { color: "black" },
+});
+
+const tip = computed(() => {
+  let lastSeg = wing.segments[wing.segments.length - 1];
+  return {
+    x:
+      -Math.tan((lastSeg.angle * Math.PI) / 180) *
+        (wing.span / 2 - lastSeg.startY) +
+      lastSeg.startX,
+    y: wing.span / 2,
+    chord: wing.chordEnd,
+  };
+});
+
+const traces = computed(() => {
+  let traces = [];
+  for (let i = 0; i < wing.segments.length; i++) {
+    let seg = wing.segments[i];
+    let nextSeg = wing.segments[i + 1];
+    console.log(seg, nextSeg);
+    let end =
+      i === wing.segments.length - 1
+        ? {
+            endX: tip.value.x,
+            endY: tip.value.y,
+            endChord: tip.value.chord,
+          }
+        : {
+            endX: nextSeg.startX,
+            endY: nextSeg.startY,
+            endChord: nextSeg.startChord,
+          };
+    traces.push(calculateLeading({ ...seg, ...end }));
+    traces.push(calculateTrailing({ ...seg, ...end }));
+    traces.push(calculateSection(seg.startX, seg.startY, seg.startChord));
+    i === wing.segments.length - 1 &&
+      traces.push(calculateSection(end.endX, end.endY, end.endChord));
+  }
+  return traces;
 });
 
 const removeSegment = () => {
@@ -182,30 +200,38 @@ const removeSegment = () => {
   Plotly.react("wing-plot", traces.value, layout, options);
 };
 
-const traces = computed(() => {
-  let basic = [sectionFuse.value, sectionTip.value];
-  wing.segments.length
-    ? basic.push(...segmentSections.value)
-    : basic.push(leading.value, trailing.value);
-  return basic;
-});
-
 // const aspectratio = computed(() => ({
 //   x: 1,
-//   y: wing.span / 2 / Math.max(wing.chordStart, -tipTrailing.value),
+//   y: wing.span / 2 / Math.max(wing.startChord, -tipTrailing.value),
 //   z:
-//     (wing.chordStart * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
-//     Math.max(wing.chordStart, -tipTrailing.value),
+//     (wing.startChord * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
+//     Math.max(wing.startChord, -tipTrailing.value),
 // }));
 
-const aspectratio = computed(() => ({
-  x: (2 * Math.max(wing.chordStart, -tipTrailing.value)) / (wing.span / 2),
-  y: 2,
-  z:
-    (2 *
-      (wing.chordStart * (Math.max(...profile[1]) - Math.min(...profile[1])))) /
-    (wing.span / 2),
-}));
+const aspectratio = computed(() => {
+  let maxX = Math.max(...wing.segments.map((i) => i.startX, tip.value.x));
+  let minX = Math.min(
+    ...wing.segments.map((i) => i.startX - i.startChord),
+    tip.value.x - tip.value.chord
+  );
+  console.log(
+    minX,
+    maxX,
+    wing.segments.map(
+      (i) => i.startX - i.startChord,
+      tip.value.x - tip.value.chord
+    )
+  );
+  return {
+    x: (minX - maxX) / wing.span,
+    y: 2,
+    z:
+      (2 *
+        (wing.startChord *
+          (Math.max(...profile[1]) - Math.min(...profile[1])))) /
+      (wing.span / 2),
+  };
+});
 
 const layout = reactive({
   title: "Wing contour",
