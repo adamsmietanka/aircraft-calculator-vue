@@ -12,7 +12,7 @@
           type="number"
           step="0.1"
           class="input input-bordered"
-          v-model="wing.chord_fuse"
+          v-model="wing.chordStart"
           @change="Plotly.react('wing-plot', traces, layout, options)"
         />
       </div>
@@ -25,7 +25,7 @@
           step="0.1"
           min="0"
           class="input input-bordered"
-          v-model="wing.chord_tip"
+          v-model="wing.chordEnd"
           @change="Plotly.react('wing-plot', traces, layout, options)"
         />
       </div>
@@ -88,40 +88,37 @@ import { Camera } from "../components/services/camera";
 const route = useRoute();
 
 const wing = reactive({
-  chord_fuse: 2,
-  chord_tip: 1,
+  chordStart: 2,
+  chordEnd: 1,
   segments: [],
   span: 10,
   angle: 10,
 });
 
-const tip_leading = computed(
+const tipLeading = computed(
   () => -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2
 );
 
-const tip_trailing = computed(
-  () =>
-    -(Math.tan((wing.angle * Math.PI) / 180) * wing.span) / 2 - wing.chord_tip
-);
+const tipTrailing = computed(() => tipLeading.value - wing.chordEnd);
 
-const section_fuse = computed(() => ({
-  x: profile[0].map((x) => x * -wing.chord_fuse),
+const sectionFuse = computed(() => ({
+  x: profile[0].map((x) => x * -wing.chordStart),
   y: Array(profile[0].length).fill(0),
-  z: profile[1].map((z) => z * wing.chord_fuse),
+  z: profile[1].map((z) => z * wing.chordStart),
   type: "scatter3d",
   mode: "lines",
 }));
 
-const section_tip = computed(() => ({
-  x: profile[0].map((x) => x * -wing.chord_tip + tip_leading.value),
+const sectionTip = computed(() => ({
+  x: profile[0].map((x) => x * -wing.chordEnd + tipLeading.value),
   y: Array(profile[0].length).fill(wing.span / 2),
-  z: profile[1].map((z) => z * wing.chord_tip),
+  z: profile[1].map((z) => z * wing.chordEnd),
   type: "scatter3d",
   mode: "lines",
 }));
 
 const leading = computed(() => ({
-  x: [...Array(11).keys()].map((x) => (x * tip_leading.value) / 10),
+  x: [...Array(11).keys()].map((x) => (x * tipLeading.value) / 10),
   y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
   z: Array(11).fill(0),
   type: "scatter3d",
@@ -130,7 +127,7 @@ const leading = computed(() => ({
 
 const trailing = computed(() => ({
   x: [...Array(11).keys()].map(
-    (x) => (x * (wing.chord_fuse + tip_trailing.value)) / 10 - wing.chord_fuse
+    (x) => (x * (wing.chordStart + tipTrailing.value)) / 10 - wing.chordStart
   ),
   y: [...Array(11).keys()].map((y) => (y * wing.span) / 2 / 10),
   z: Array(11).fill(0),
@@ -141,13 +138,12 @@ const trailing = computed(() => ({
 const addSegment = () => {
   let prevSegment = wing.segments.length
     ? wing.segments[wing.segments.length - 1]
-    : { startY: 0, startX: 0, startChord: wing.chord_fuse, angle: wing.angle };
-  console.log(prevSegment);
+    : { startY: 0, startX: 0, startChord: wing.chordStart, angle: wing.angle };
   let startY = (prevSegment.startY + wing.span / 2) / 2;
   let segment = {
     startY,
     startX: -(Math.tan((prevSegment.angle * Math.PI) / 180) * startY),
-    startChord: (prevSegment.startChord + wing.chord_tip) / 2,
+    startChord: (prevSegment.startChord + wing.chordEnd) / 2,
     angle: prevSegment.angle * 1,
   };
   wing.segments.push(segment);
@@ -187,7 +183,7 @@ const removeSegment = () => {
 };
 
 const traces = computed(() => {
-  let basic = [section_fuse.value, section_tip.value];
+  let basic = [sectionFuse.value, sectionTip.value];
   wing.segments.length
     ? basic.push(...segmentSections.value)
     : basic.push(leading.value, trailing.value);
@@ -196,18 +192,18 @@ const traces = computed(() => {
 
 // const aspectratio = computed(() => ({
 //   x: 1,
-//   y: wing.span / 2 / Math.max(wing.chord_fuse, -tip_trailing.value),
+//   y: wing.span / 2 / Math.max(wing.chordStart, -tipTrailing.value),
 //   z:
-//     (wing.chord_fuse * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
-//     Math.max(wing.chord_fuse, -tip_trailing.value),
+//     (wing.chordStart * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
+//     Math.max(wing.chordStart, -tipTrailing.value),
 // }));
 
 const aspectratio = computed(() => ({
-  x: (2 * Math.max(wing.chord_fuse, -tip_trailing.value)) / (wing.span / 2),
+  x: (2 * Math.max(wing.chordStart, -tipTrailing.value)) / (wing.span / 2),
   y: 2,
   z:
     (2 *
-      (wing.chord_fuse * (Math.max(...profile[1]) - Math.min(...profile[1])))) /
+      (wing.chordStart * (Math.max(...profile[1]) - Math.min(...profile[1])))) /
     (wing.span / 2),
 }));
 
@@ -262,15 +258,7 @@ onMounted(() => {
 
 watch(aspectratio, (newValue) => {
   layout.scene.aspectratio = newValue;
-  console.log(newValue, layout.scene.aspectratio);
 });
-
-watch(
-  () => layout.scene.camera.eye,
-  (newValue) => {
-    console.log(newValue);
-  }
-);
 
 const camera = new Camera("wing-plot", layout);
 
