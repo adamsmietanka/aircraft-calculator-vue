@@ -200,45 +200,12 @@ const removeSegment = () => {
   Plotly.react("wing-plot", traces.value, layout, options);
 };
 
-// const aspectratio = computed(() => ({
-//   x: 1,
-//   y: wing.span / 2 / Math.max(wing.startChord, -tipTrailing.value),
-//   z:
-//     (wing.startChord * (Math.max(...profile[1]) - Math.min(...profile[1]))) /
-//     Math.max(wing.startChord, -tipTrailing.value),
-// }));
-
-const aspectratio = computed(() => {
-  let maxX = Math.max(...wing.segments.map((i) => i.startX, tip.value.x));
-  let minX = Math.min(
-    ...wing.segments.map((i) => i.startX - i.startChord),
-    tip.value.x - tip.value.chord
-  );
-  console.log(
-    minX,
-    maxX,
-    wing.segments.map(
-      (i) => i.startX - i.startChord,
-      tip.value.x - tip.value.chord
-    )
-  );
-  return {
-    x: (minX - maxX) / wing.span,
-    y: 2,
-    z:
-      (2 *
-        (wing.startChord *
-          (Math.max(...profile[1]) - Math.min(...profile[1])))) /
-      (wing.span / 2),
-  };
-});
-
 const layout = reactive({
   title: "Wing contour",
   showlegend: false,
   font: { size: 12 },
-  height: 500,
-  width: 800,
+  height: 300,
+  width: 600,
   margin: {
     l: 0,
     r: 0,
@@ -247,8 +214,7 @@ const layout = reactive({
     pad: 4,
   },
   scene: {
-    aspectmode: "manual",
-    aspectratio: aspectratio.value,
+    aspectmode: "data",
     camera: {
       eye:
         route.params.step === "1"
@@ -269,7 +235,7 @@ const layout = reactive({
 });
 
 const options = {
-  scrollZoom: true,
+  scrollZoom: false,
   responsive: true,
   modeBarButtons: [["toImage"]],
   toImageButtonOptions: {
@@ -280,10 +246,6 @@ const options = {
 
 onMounted(() => {
   Plotly.newPlot("wing-plot", traces.value, layout, options);
-});
-
-watch(aspectratio, (newValue) => {
-  layout.scene.aspectratio = newValue;
 });
 
 const camera = new Camera("wing-plot", layout);
