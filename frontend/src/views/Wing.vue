@@ -1,18 +1,18 @@
 <template>
-  <section class="transition-all duration-500">
+  <section class="transition-all duration-500 flex flex-row justify-center">
     <div
-      class="relative transition-all transform duration-500"
+      class="relative transition-all transform duration-500 mr-8"
       :class="{ '-translate-x-72': route.params.step > 1 }"
     >
       <div class="form-control">
         <label class="label">
-          <span class="label-text">Fuselage chord</span>
+          <span class="label-text">Wingspan</span>
         </label>
         <input
           type="number"
-          step="0.1"
+          step="0.2"
           class="input input-bordered"
-          v-model="wing.startChord"
+          v-model="wing.span"
           @change="Plotly.react('wing-plot', traces, layout, options)"
         />
       </div>
@@ -31,31 +31,54 @@
       </div>
       <div class="form-control">
         <label class="label">
-          <span class="label-text">Wingspan</span>
-        </label>
-        <input
-          type="number"
-          step="0.2"
-          class="input input-bordered"
-          v-model="wing.span"
-          @change="Plotly.react('wing-plot', traces, layout, options)"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Angle</span>
-        </label>
-        <input
-          type="number"
-          class="input input-bordered"
-          v-model="wing.angle"
-          @change="Plotly.react('wing-plot', traces, layout, options)"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
           <span class="label-text">Segments</span>
         </label>
+        <div
+          v-for="seg in wing.segments"
+          :key="seg.angle"
+          class="card shadow mb-4"
+        >
+          <div class="p-4">
+            <div class="form-control" v-if="seg.startY">
+              <label class="label">
+                <span class="label-text">Start</span>
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                class="input input-sm input-bordered"
+                v-model="seg.startY"
+                @change="Plotly.react('wing-plot', traces, layout, options)"
+              />
+            </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Start chord</span>
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                class="input input-sm input-bordered"
+                v-model="seg.startChord"
+                @change="Plotly.react('wing-plot', traces, layout, options)"
+              />
+            </div>
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Angle</span>
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                class="input input-sm input-bordered"
+                v-model="seg.angle"
+                @change="Plotly.react('wing-plot', traces, layout, options)"
+              />
+            </div>
+          </div>
+        </div>
         <div class="btn-group">
           <button
             class="btn btn-sm btn-success"
@@ -170,28 +193,26 @@ const tip = computed(() => {
 
 const traces = computed(() => {
   let traces = [];
+  let prevSegment = { endY: 0, endX: 0, endChord: wing.segments[0].startChord };
   for (let i = 0; i < wing.segments.length; i++) {
     let seg = wing.segments[i];
     let nextSeg = wing.segments[i + 1];
-    console.log(seg, nextSeg);
-    let end =
-      i === wing.segments.length - 1
-        ? {
-            endX: tip.value.x,
-            endY: tip.value.y,
-            endChord: tip.value.chord,
-          }
-        : {
-            endX: nextSeg.startX,
-            endY: nextSeg.startY,
-            endChord: nextSeg.startChord,
-          };
-    traces.push(calculateLeading({ ...seg, ...end }));
-    traces.push(calculateTrailing({ ...seg, ...end }));
+    seg.startX = prevSegment.endX;
+    seg.startY = prevSegment.endY;
+    seg.startChord = prevSegment.endChord;
+    seg.endY = i === wing.segments.length - 1 ? tip.value.y : nextSeg.startY;
+    seg.endX = -(
+      Math.tan((seg.angle * Math.PI) / 180) * (seg.endY - prevSegment.endY) -
+      prevSegment.endX
+    );
+    seg.endChord =
+      i === wing.segments.length - 1 ? tip.value.chord : nextSeg.startChord;
+    traces.push(calculateLeading(seg));
+    traces.push(calculateTrailing(seg));
     traces.push(calculateSection(seg.startX, seg.startY, seg.startChord));
-    i === wing.segments.length - 1 &&
-      traces.push(calculateSection(end.endX, end.endY, end.endChord));
+    prevSegment = seg;
   }
+  traces.push(calculateSection(tip.value.x, tip.value.y, tip.value.chord));
   return traces;
 });
 
@@ -269,60 +290,3 @@ watch(
   }
 );
 </script>
-
-<!-- <script>
-import axios from "axios";
-import Plotly from "plotly.js-gl3d-dist-min";
-import NumberField from "@/components/NumberField";
-import { mapMutations, mapState } from "vuex";
-
-export default {
-  computed: {
-    selected_airfoil: {
-      get() {
-        return this.$store.state.wing.selected_airfoil;
-      },
-      set(value) {
-        return this.$store.commit("SET_AIRFOIL", value);
-      },
-    },
-  mounted() {
-    Plotly.newPlot("wing-plot", this.traces, this.layout, this.options);
-  },
-  async created() {
-    const choices = await axios.get("http://localhost:5000/airfoils");
-    const airfoil = await axios.get("http://localhost:5000/airfoil", {
-      params: { airfoil: this.selected_airfoil },
-    });
-    this.airfoils = choices.data;
-    this.profile = airfoil.data;
-  },
-  watch: {
-    traces() {
-      Plotly.react("wing-plot", this.traces, this.layout, this.options);
-    },
-    async selected_airfoil() {
-      const airfoil = await axios.get("http://localhost:5000/airfoil", {
-        params: { airfoil: this.selected_airfoil },
-      });
-      this.profile = airfoil.data;
-    },
-    profile() {
-      Plotly.react("wing-plot", this.traces, this.layout, this.options);
-    },
-  },
-};
-</script> -->
-
-<style scoped>
-section {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-}
-.form {
-  display: flex;
-  flex-direction: column;
-  width: 250px;
-}
-</style>
