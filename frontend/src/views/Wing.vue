@@ -215,6 +215,7 @@ const layout = reactive({
   },
   scene: {
     aspectmode: "data",
+    dragmode: false,
     camera: {
       eye:
         route.params.step === "1"
@@ -250,14 +251,21 @@ onMounted(() => {
 
 const camera = new Camera("wing-plot", layout);
 
+const lockCamera = () => {
+  layout.scene.dragmode = false;
+};
+
+const unlockCamera = () => {
+  layout.scene.dragmode = "turntable";
+};
+
 watch(
   () => route.params.step,
-  (newValue) => {
+  (step) => {
     let target =
-      newValue === "1"
-        ? { x: 0.01, y: 0, z: 1.5 }
-        : { x: 1.5, y: 1.5, z: 0.75 };
+      step === "1" ? { x: 0.01, y: 0, z: 1.5 } : { x: 1.5, y: 1.5, z: 0.75 };
     camera.animate(target);
+    step === "1" ? lockCamera() : unlockCamera();
   }
 );
 </script>
