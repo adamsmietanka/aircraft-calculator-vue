@@ -1,101 +1,110 @@
 <template>
   <section class="transition-all duration-500 flex flex-row justify-center">
-    <div
-      class="relative transition-all transform duration-500 mr-8"
-      :class="{ '-translate-x-72': route.params.step > 1 }"
-    >
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Wingspan</span>
-        </label>
-        <input
-          type="number"
-          step="0.2"
-          class="input input-bordered"
-          v-model="wing.span"
-          @change="Plotly.react('wing-plot', traces, layout, options)"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Tip chord</span>
-        </label>
-        <input
-          type="number"
-          step="0.1"
-          min="0"
-          class="input input-bordered"
-          v-model="wing.chordEnd"
-          @change="Plotly.react('wing-plot', traces, layout, options)"
-        />
-      </div>
-      <div class="form-control">
-        <label class="label">
-          <span class="label-text">Segments</span>
-        </label>
-        <div
-          v-for="seg in wing.segments"
-          :key="seg.angle"
-          class="card shadow mb-4"
-        >
-          <div class="p-4">
-            <div class="form-control" v-if="seg.startY">
-              <label class="label">
-                <span class="label-text">Start</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                class="input input-sm input-bordered"
-                v-model="seg.startY"
-                @change="Plotly.react('wing-plot', traces, layout, options)"
-              />
-            </div>
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Start chord</span>
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                class="input input-sm input-bordered"
-                v-model="seg.startChord"
-                @change="Plotly.react('wing-plot', traces, layout, options)"
-              />
-            </div>
-            <div class="form-control">
-              <label class="label">
-                <span class="label-text">Angle</span>
-              </label>
-              <input
-                type="number"
-                step="0.5"
-                class="input input-sm input-bordered"
-                v-model="seg.angle"
-                @change="Plotly.react('wing-plot', traces, layout, options)"
-              />
+    <div class="relative">
+      <div
+        class="relative transition-all transform duration-500 mr-8"
+        :class="{ '-translate-x-400': route.params.step > 1 }"
+      >
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Wingspan</span>
+          </label>
+          <input
+            type="number"
+            step="0.2"
+            class="input input-bordered"
+            v-model="wing.span"
+            @change="Plotly.react('wing-plot', traces, layout, options)"
+          />
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Tip chord</span>
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            class="input input-bordered"
+            v-model="wing.chordEnd"
+            @change="Plotly.react('wing-plot', traces, layout, options)"
+          />
+        </div>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Segments</span>
+          </label>
+          <div
+            v-for="seg in wing.segments"
+            :key="seg.angle"
+            class="card shadow mb-4"
+          >
+            <div class="p-4">
+              <div class="form-control" v-if="seg.startY">
+                <label class="label">
+                  <span class="label-text">Start</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  class="input input-sm input-bordered"
+                  v-model="seg.startY"
+                  @change="Plotly.react('wing-plot', traces, layout, options)"
+                />
+              </div>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text">Start chord</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  class="input input-sm input-bordered"
+                  v-model="seg.startChord"
+                  @change="Plotly.react('wing-plot', traces, layout, options)"
+                />
+              </div>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text">Angle</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  class="input input-sm input-bordered"
+                  v-model="seg.angle"
+                  @change="Plotly.react('wing-plot', traces, layout, options)"
+                />
+              </div>
             </div>
           </div>
-        </div>
-        <div class="btn-group">
-          <button
-            class="btn btn-sm btn-success"
-            v-if="wing.segments.length < 5"
-            @click="addSegment"
-          >
-            Add
-          </button>
-          <button
-            class="btn btn-sm btn-error"
-            v-if="wing.segments.length > 1"
-            @click="removeSegment"
-          >
-            Remove
-          </button>
+          <div class="btn-group">
+            <button
+              class="btn btn-sm btn-success"
+              v-if="wing.segments.length < 5"
+              @click="addSegment"
+            >
+              Add
+            </button>
+            <button
+              class="btn btn-sm btn-error"
+              v-if="wing.segments.length > 1"
+              @click="removeSegment"
+            >
+              Remove
+            </button>
+          </div>
         </div>
       </div>
+      <WingAirfoils
+        class="absolute top-0 transition-all transform duration-500 mr-8"
+        :class="{
+          'translate-x-0': route.params.step === '2',
+          '-translate-x-400': route.params.step !== '2',
+        }"
+      />
     </div>
     <div id="wing-plot"></div>
   </section>
@@ -107,26 +116,16 @@ import { useRoute } from "vue-router";
 import Plotly from "plotly.js-gl3d-dist-min";
 import { profile } from "../components/stub/0009";
 import { Camera } from "../components/services/camera";
+import { wing } from "./outline";
+import WingAirfoils from "./WingAirfoils.vue";
 
 const route = useRoute();
-
-const wing = reactive({
-  chordEnd: 1,
-  segments: [
-    {
-      startChord: 2,
-      angle: 10,
-      startX: 0,
-      startY: 0,
-    },
-  ],
-  span: 10,
-});
 
 const addSegment = () => {
   let prevSegment = wing.segments[wing.segments.length - 1];
   let startY = (prevSegment.startY + wing.span / 2) / 2;
   let segment = {
+    id: wing.segments.length,
     startY,
     startX: -(
       Math.tan((prevSegment.angle * Math.PI) / 180) *
@@ -290,3 +289,9 @@ watch(
   }
 );
 </script>
+
+<style scoped>
+.-translate-x-400 {
+  --tw-translate-x: -100rem;
+}
+</style>
