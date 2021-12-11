@@ -1,8 +1,8 @@
 <template>
   <section class="transition-all duration-500 flex flex-row justify-center">
-    <div class="relative">
+    <div class="relative mr-8">
       <div
-        class="relative transition-all transform duration-500 mr-8"
+        class="relative transition-all transform duration-500 p-2"
         :class="{ '-translate-x-400': route.params.step > 1 }"
       >
         <div class="form-control">
@@ -34,53 +34,56 @@
           <label class="label">
             <span class="label-text">Segments</span>
           </label>
-          <div
-            v-for="seg in wing.segments"
-            :key="seg.angle"
-            class="card shadow mb-4"
-          >
-            <div class="p-4">
-              <div class="form-control" v-if="seg.startY">
-                <label class="label">
-                  <span class="label-text">Start</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  class="input input-sm input-bordered"
-                  v-model="seg.startY"
-                  @change="Plotly.react('wing-plot', traces, layout, options)"
-                />
-              </div>
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Start chord</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  class="input input-sm input-bordered"
-                  v-model="seg.startChord"
-                  @change="Plotly.react('wing-plot', traces, layout, options)"
-                />
-              </div>
-              <div class="form-control">
-                <label class="label">
-                  <span class="label-text">Angle</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.5"
-                  class="input input-sm input-bordered"
-                  v-model="seg.angle"
-                  @change="Plotly.react('wing-plot', traces, layout, options)"
-                />
+          <div id="segments" class="overflow-y-scroll max-h-100 mb-4 p-1">
+            <div
+              v-for="seg in wing.segments"
+              :key="seg.angle"
+              class="card shadow my-2"
+            >
+              <div class="p-4">
+                <h3>{{ segmentLabel(seg.id) }}</h3>
+                <div class="form-control" v-if="seg.startY">
+                  <label class="label">
+                    <span class="label-text">Start</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    class="input input-sm input-bordered"
+                    v-model="seg.startY"
+                    @change="Plotly.react('wing-plot', traces, layout, options)"
+                  />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Start chord</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    class="input input-sm input-bordered"
+                    v-model="seg.startChord"
+                    @change="Plotly.react('wing-plot', traces, layout, options)"
+                  />
+                </div>
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text">Angle</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    class="input input-sm input-bordered"
+                    v-model="seg.angle"
+                    @change="Plotly.react('wing-plot', traces, layout, options)"
+                  />
+                </div>
               </div>
             </div>
           </div>
-          <div class="btn-group">
+          <div class="btn-group w-full">
             <button
               class="btn btn-sm btn-success"
               v-if="wing.segments.length < 5"
@@ -99,7 +102,7 @@
         </div>
       </div>
       <WingAirfoils
-        class="absolute top-0 transition-all transform duration-500 mr-8"
+        class="absolute inset-0 p-2 transition-all transform duration-500"
         :class="{
           'translate-x-0': route.params.step === '2',
           '-translate-x-400': route.params.step !== '2',
@@ -111,7 +114,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, computed, watch, ref } from "vue";
+import { onMounted, reactive, computed, watch, ref, onUpdated } from "vue";
 import { useRoute } from "vue-router";
 import Plotly from "plotly.js-gl3d-dist-min";
 import { profile } from "../components/stub/0009";
@@ -119,7 +122,23 @@ import { Camera } from "../components/services/camera";
 import { wing } from "./outline";
 import WingAirfoils from "./WingAirfoils.vue";
 
-const route = useRoute();
+const segmentLabel = (i) => {
+  if (i === 0) {
+    return "Fuselage segment";
+  } else if (i + 1 === wing.segments.length) {
+    return "Tip segment";
+  } else {
+    return `Segment #${i + 1}`;
+  }
+};
+
+const scrollToBottom = async () => {
+  let FRAME_NUMBER = 50;
+  for (let i = 0; i <= FRAME_NUMBER; i++) {
+    await new Promise((r) => setTimeout(r, 100 / FRAME_NUMBER));
+    document.getElementById("segments").scrollTop += 6;
+  }
+};
 
 const addSegment = () => {
   let prevSegment = wing.segments[wing.segments.length - 1];
@@ -136,7 +155,13 @@ const addSegment = () => {
     angle: prevSegment.angle * 1.25,
   };
   wing.segments.push(segment);
+  Plotly.react("wing-plot", traces.value, layout, options);
+  scrollToBottom();
+};
 
+const removeSegment = () => {
+  wing.segments.pop();
+  document.getElementById("segments").scrollTop -= 268;
   Plotly.react("wing-plot", traces.value, layout, options);
 };
 
@@ -215,10 +240,7 @@ const traces = computed(() => {
   return traces;
 });
 
-const removeSegment = () => {
-  wing.segments.pop();
-  Plotly.react("wing-plot", traces.value, layout, options);
-};
+const route = useRoute();
 
 const layout = reactive({
   title: "Wing contour",
@@ -293,5 +315,8 @@ watch(
 <style scoped>
 .-translate-x-400 {
   --tw-translate-x: -100rem;
+}
+.max-h-100 {
+  max-height: 25rem;
 }
 </style>

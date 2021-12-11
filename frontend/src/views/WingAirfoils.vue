@@ -1,22 +1,18 @@
 <template>
   <div>
-    <div
-      v-for="seg in wing.segments"
-      :key="seg.angle"
-      class="form-control w-full max-w-xs"
-    >
+    <div v-for="seg in wing.segments" :key="seg.angle" class="form-control">
       <label class="label">
         <span class="label-text">{{ airfoilLabel(seg.id) }}</span>
       </label>
-      <select class="select select-bordered w-full max-w-xs">
+      <select class="select select-bordered">
         <option selected="selected">0009</option>
       </select>
     </div>
-    <div class="form-control w-full max-w-xs">
+    <div class="form-control">
       <label class="label">
         <span class="label-text">Tip airfoil</span>
       </label>
-      <select class="select select-bordered w-full max-w-xs">
+      <select class="select select-bordered">
         <option selected="selected">0009</option>
       </select>
     </div>
