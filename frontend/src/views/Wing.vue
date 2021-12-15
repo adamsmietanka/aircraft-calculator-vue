@@ -121,6 +121,7 @@ import { profile } from "../components/stub/0009";
 import { Camera } from "../components/services/camera";
 import { wing } from "./outline";
 import WingAirfoils from "./WingAirfoils.vue";
+import { bezierEasier } from "../components/services/interp";
 
 const segmentLabel = (i) => {
   if (i === 0) {
@@ -133,10 +134,26 @@ const segmentLabel = (i) => {
 };
 
 const scrollToBottom = async () => {
-  let FRAME_NUMBER = 50;
+  let FRAME_NUMBER = 30;
+  let segments = document.getElementById("segments");
+  let { scrollTop: start } = segments;
+  let end = segments.scrollHeight - segments.offsetHeight + 260;
   for (let i = 0; i <= FRAME_NUMBER; i++) {
-    await new Promise((r) => setTimeout(r, 100 / FRAME_NUMBER));
-    document.getElementById("segments").scrollTop += 6;
+    let mu = i / FRAME_NUMBER;
+    await new Promise((r) => setTimeout(r, 500 / FRAME_NUMBER));
+    segments.scrollTop = bezierEasier(start, end, mu);
+  }
+};
+
+const scrollUp = async () => {
+  let FRAME_NUMBER = 30;
+  let segments = document.getElementById("segments");
+  let { scrollTop: start } = segments;
+  let end = segments.scrollHeight - segments.offsetHeight - 260;
+  for (let i = 0; i <= FRAME_NUMBER; i++) {
+    let mu = i / FRAME_NUMBER;
+    await new Promise((r) => setTimeout(r, 400 / FRAME_NUMBER));
+    segments.scrollTop = bezierEasier(start, end, mu);
   }
 };
 
@@ -154,14 +171,14 @@ const addSegment = () => {
     startChord: (prevSegment.startChord + wing.chordEnd) / 2,
     angle: prevSegment.angle * 1.25,
   };
+  scrollToBottom();
   wing.segments.push(segment);
   Plotly.react("wing-plot", traces.value, layout, options);
-  scrollToBottom();
 };
 
-const removeSegment = () => {
+const removeSegment = async () => {
+  await scrollUp();
   wing.segments.pop();
-  document.getElementById("segments").scrollTop -= 268;
   Plotly.react("wing-plot", traces.value, layout, options);
 };
 
