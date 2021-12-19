@@ -7,6 +7,38 @@
       >
         <div class="form-control">
           <label class="label">
+            <span class="label-text">Wing type</span>
+          </label>
+          <label class="cursor-pointer label justify-start">
+            <input
+              type="radio"
+              v-model="wing.shape"
+              class="radio radio-sm mr-1"
+              value="rectangular"
+            />
+            <span class="label-text">Rectangular</span>
+          </label>
+          <label class="cursor-pointer label justify-start">
+            <input
+              type="radio"
+              v-model="wing.shape"
+              class="radio radio-sm mr-1"
+              value="trapezoidal"
+            />
+            <span class="label-text">Trapezoidal</span>
+          </label>
+          <label class="cursor-pointer label justify-start">
+            <input
+              type="radio"
+              v-model="wing.shape"
+              class="radio radio-sm mr-1"
+              value="elliptical"
+            />
+            <span class="label-text">Elliptical</span>
+          </label>
+        </div>
+        <div class="form-control">
+          <label class="label">
             <span class="label-text">Wingspan</span>
           </label>
           <input
@@ -19,7 +51,9 @@
         </div>
         <div class="form-control">
           <label class="label">
-            <span class="label-text">Tip chord</span>
+            <span class="label-text">{{
+              wing.shape === "trapezoidal" ? "Tip chord" : "Chord"
+            }}</span>
           </label>
           <input
             type="number"
@@ -30,11 +64,19 @@
             @change="Plotly.react('wing-plot', traces, layout, options)"
           />
         </div>
-        <div class="form-control">
+        <div
+          class="form-control transition-all transform duration-500"
+          :class="{
+            'translate-x-0':
+              route.params.step === '1' && wing.shape === 'trapezoidal',
+            '-translate-x-400':
+              wing.shape !== 'trapezoidal' || route.params.step !== '1',
+          }"
+        >
           <label class="label">
             <span class="label-text">Segments</span>
           </label>
-          <div id="segments" class="overflow-y-scroll max-h-100 mb-4 p-1">
+          <div id="segments" class="overflow-y-scroll max-h-100 mb-4 -mt-3 p-1">
             <div
               v-for="seg in wing.segments"
               :key="seg.angle"
