@@ -13,6 +13,7 @@
             <input
               type="radio"
               v-model="wing.shape"
+              @change="Plotly.react('wing-plot', traces, layout, options)"
               class="radio radio-sm mr-1"
               value="rectangular"
             />
@@ -22,6 +23,7 @@
             <input
               type="radio"
               v-model="wing.shape"
+              @change="Plotly.react('wing-plot', traces, layout, options)"
               class="radio radio-sm mr-1"
               value="trapezoidal"
             />
@@ -31,6 +33,7 @@
             <input
               type="radio"
               v-model="wing.shape"
+              @change="Plotly.react('wing-plot', traces, layout, options)"
               class="radio radio-sm mr-1"
               value="elliptical"
             />
@@ -274,7 +277,7 @@ const tip = computed(() => {
   };
 });
 
-const traces = computed(() => {
+const trapezoidTraces = computed(() => {
   let traces = [];
   let prevSegment = { endY: 0, endX: 0, endChord: wing.segments[0].startChord };
   for (let i = 0; i < wing.segments.length; i++) {
@@ -297,6 +300,37 @@ const traces = computed(() => {
   }
   traces.push(calculateSection(tip.value.x, tip.value.y, tip.value.chord));
   return traces;
+});
+
+const rectTraces = computed(() => {
+  let traces = [];
+  traces.push({
+    x: [0, 0],
+    y: [0, wing.span / 2],
+    z: [0, 0],
+    type: "scatter3d",
+    mode: "lines",
+    marker: { color: "black" },
+  });
+  traces.push({
+    x: [-wing.chordEnd, -wing.chordEnd],
+    y: [0, wing.span / 2],
+    z: [0, 0],
+    type: "scatter3d",
+    mode: "lines",
+    marker: { color: "black" },
+  });
+  traces.push(calculateSection(0, 0, wing.chordEnd));
+  traces.push(calculateSection(0, wing.span / 2, wing.chordEnd));
+  return traces;
+});
+
+const traces = computed(() => {
+  if (wing.shape === "rectangular") {
+    return rectTraces.value;
+  } else {
+    return trapezoidTraces.value;
+  }
 });
 
 const route = useRoute();
