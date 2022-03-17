@@ -52,11 +52,9 @@
             @change="Plotly.react('wing-plot', traces, layout, options)"
           />
         </div>
-        <div class="form-control">
+        <div class="form-control" v-if="wing.shape === 'trapezoidal'">
           <label class="label">
-            <span class="label-text">{{
-              wing.shape === "trapezoidal" ? "Tip chord" : "Chord"
-            }}</span>
+            <span class="label-text">Tip chord</span>
           </label>
           <input
             type="number"
@@ -64,6 +62,19 @@
             min="0"
             class="input input-bordered"
             v-model="wing.chordEnd"
+            @change="Plotly.react('wing-plot', traces, layout, options)"
+          />
+        </div>
+        <div class="form-control" v-if="wing.shape === 'rectangular'">
+          <label class="label">
+            <span class="label-text">Chord</span>
+          </label>
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            class="input input-bordered"
+            v-model="wing.chordRect"
             @change="Plotly.react('wing-plot', traces, layout, options)"
           />
         </div>
@@ -313,15 +324,15 @@ const rectTraces = computed(() => {
     marker: { color: "black" },
   });
   traces.push({
-    x: [-wing.chordEnd, -wing.chordEnd],
+    x: [-wing.chordRect, -wing.chordRect],
     y: [0, wing.span / 2],
     z: [0, 0],
     type: "scatter3d",
     mode: "lines",
     marker: { color: "black" },
   });
-  traces.push(calculateSection(0, 0, wing.chordEnd));
-  traces.push(calculateSection(0, wing.span / 2, wing.chordEnd));
+  traces.push(calculateSection(0, 0, wing.chordRect));
+  traces.push(calculateSection(0, wing.span / 2, wing.chordRect));
   return traces;
 });
 

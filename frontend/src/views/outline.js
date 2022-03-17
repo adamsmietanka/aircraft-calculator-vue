@@ -3,6 +3,7 @@ import { reactive } from "vue";
 export const wing = reactive({
   shape: "rectangular",
   chordEnd: 1,
+  chordRect: 2,
   segments: [
     {
       id: 0,
